@@ -1,252 +1,83 @@
+__author__ = "Pascal Boestfleisch"
+
 import pygame
 import pygame_menu
-import math
+import sys
+
+sys.path.append("game")
+import helicopter
+import warehouse
+import landingsite
+import transporter
+import gasstation
+import ore
+import parameters
 
 # Initialising
 pygame.init()
 
-# Window size
-SCREEN_WIDTH = 1600
-SCREEN_HEIGHT = 900
 
 # Load images
 bg = pygame.transform.scale(
-    pygame.image.load("img/background.jpg"), (SCREEN_WIDTH, SCREEN_HEIGHT)
+    pygame.image.load("img/background.jpg"),
+    (parameters.SCREEN_WIDTH, parameters.SCREEN_HEIGHT),
 )
-lkw = pygame.transform.scale(pygame.image.load("img/delivery-truck.png"), (150, 80))
-heli = pygame.transform.scale(pygame.image.load("img/helicopter.png"), (150, 90))
-gas = pygame.transform.scale(pygame.image.load("img/gasstation.png"), (125, 125))
-wares = pygame.transform.scale(pygame.image.load("img/warehouse.png"), (250, 250))
-ore = pygame.transform.scale(pygame.image.load("img/ores.png"), (150, 150))
-ls = pygame.transform.scale(pygame.image.load("img/landing_site.png"), (120, 120))
 continue_text = pygame.transform.scale(
     pygame.image.load("img/continue_text.png"), (400, 100)
 )
 manual = pygame.transform.scale(
-    pygame.image.load("manual/manual.png"), (SCREEN_WIDTH, SCREEN_HEIGHT)
+    pygame.image.load("manual/manual.png"),
+    (parameters.SCREEN_WIDTH, parameters.SCREEN_HEIGHT),
 )
 mbg = pygame.transform.scale(
-    pygame.image.load("img/menu-background.png"), (SCREEN_WIDTH, SCREEN_HEIGHT)
+    pygame.image.load("img/menu-background.png"),
+    (parameters.SCREEN_WIDTH, parameters.SCREEN_HEIGHT),
 )
 gameover = pygame.transform.scale(
-    pygame.image.load("img/game_over.jpg"), (SCREEN_WIDTH, SCREEN_HEIGHT)
+    pygame.image.load("img/game_over.jpg"),
+    (parameters.SCREEN_WIDTH, parameters.SCREEN_HEIGHT),
 )
 gameover_text = pygame.transform.scale(
     pygame.image.load("img/game_over_text.png"), (500, 200)
 )
 gamewon = pygame.transform.scale(
-    pygame.image.load("img/game_won.png"), (SCREEN_WIDTH, SCREEN_HEIGHT)
+    pygame.image.load("img/game_won.png"),
+    (parameters.SCREEN_WIDTH, parameters.SCREEN_HEIGHT),
 )
 gamewon_text = pygame.transform.scale(
     pygame.image.load("img/game_won_text.png"), (500, 200)
 )
-
-# Colors
-WHITE = (255, 255, 255)
-GREEN = (0, 255, 0)
-RED = (255, 0, 0)
-
-# Parameters
-FUEL_CONSUMPTION_RATE = 0.125
-TRANSPORTER_SPEED = 4
-HELICOPTER_SPEED = TRANSPORTER_SPEED + 0.04
-TANK_CAPACITY = 150
-MAX_ORES_TRANSPORTABLE = 100
-MAX_ORE_LEVEL = 800
-HELICOPTER_ORES_STOLEN = 0
 
 
 # Function to set difficulty level
 def set_difficulty(_, value):
     global TRANSPORTER_SPEED, TANK_CAPACITY, HELICOPTER_SPEED, FUEL_CONSUMPTION_RATE, MAX_ORE_LEVEL, MAX_ORES_TRANSPORTABLE
     if value == 1:  # Easy
-        TRANSPORTER_SPEED = 4
-        TANK_CAPACITY = 150
-        FUEL_CONSUMPTION_RATE = 0.125
-        HELICOPTER_SPEED = TRANSPORTER_SPEED + 0.04
-        MAX_ORES_TRANSPORTABLE = 100
-        MAX_ORE_LEVEL = 800
+        parameters.TRANSPORTER_SPEED = 4
+        parameters.TANK_CAPACITY = 150
+        parameters.FUEL_CONSUMPTION_RATE = 0.125
+        parameters.HELICOPTER_SPEED = parameters.TRANSPORTER_SPEED + 0.04
+        parameters.MAX_ORES_TRANSPORTABLE = 100
+        parameters.MAX_ORE_LEVEL = 800
     elif value == 2:  # Medium
-        TRANSPORTER_SPEED = 4
-        TANK_CAPACITY = 135
-        FUEL_CONSUMPTION_RATE = 0.125
-        HELICOPTER_SPEED = TRANSPORTER_SPEED + 0.06
-        MAX_ORES_TRANSPORTABLE = 90
-        MAX_ORE_LEVEL = 700
+        parameters.TRANSPORTER_SPEED = 4
+        parameters.TANK_CAPACITY = 135
+        parameters.FUEL_CONSUMPTION_RATE = 0.125
+        parameters.HELICOPTER_SPEED = parameters.TRANSPORTER_SPEED + 0.06
+        parameters.MAX_ORES_TRANSPORTABLE = 90
+        parameters.MAX_ORE_LEVEL = 700
     elif value == 3:  # Hard
-        TRANSPORTER_SPEED = 4
-        TANK_CAPACITY = 120
-        FUEL_CONSUMPTION_RATE = 0.125
-        HELICOPTER_SPEED = TRANSPORTER_SPEED + 0.08
-        MAX_ORES_TRANSPORTABLE = 80
-        MAX_ORE_LEVEL = 600
-
-
-class LandingSite(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__()
-        self.image = ls
-        self.rect = self.image.get_rect()
-        self.rect.center = (1500, 60)
-
-
-class Ore(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__()
-        self.image = ore
-        self.rect = self.image.get_rect()
-        self.rect.center = (60, 788)
-        self.ore_level = MAX_ORE_LEVEL
-
-    # Draw max ore level
-    def draw_max_ore_display(self, screen):
-        font = pygame.font.Font(None, 36)
-        ore_text = font.render(f"Erz: {self.ore_level}", True, WHITE)
-        screen.blit(
-            ore_text,
-            (self.rect.centerx - ore_text.get_width() // 2, self.rect.centery - 70),
-        )
-
-
-class GasStation(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__()
-        self.image = gas
-        self.rect = self.image.get_rect()
-        self.rect.center = (100, 120)
-
-
-class Helicopter(pygame.sprite.Sprite):
-    def __init__(self, transporter):
-        super().__init__()
-        self.image = heli
-        self.rect = self.image.get_rect()
-        self.rect.center = (1510, 80)
-        self.transporter = transporter
-        self.stolen_ores = HELICOPTER_ORES_STOLEN
-        self.font = pygame.font.Font(None, 36)
-
-    # Return to starting position
-    def go_home(self):
-        self.rect.center = (1510, 50)
-
-    # Algorithm to chase transporter
-    def chase_transporter(self):
-        dx = self.transporter.rect.centerx - self.rect.centerx
-        dy = self.transporter.rect.centery - self.rect.centery
-        dist = math.hypot(dx, dy)
-
-        if dist > dx:
-            if dist > 0:
-                dx /= dist
-            self.rect.x += dx * HELICOPTER_SPEED
-
-        if dist > dy:
-            if dist > 0:
-                dy /= dist
-            self.rect.y += dy * HELICOPTER_SPEED
-
-    # Steal ores from transporter
-    def steal_ores(self, transporter):
-        if self.rect.colliderect(transporter.rect):
-            self.stolen_ores = self.stolen_ores + transporter.ores_collected
-
-    # Draw stolen ore
-    def draw_stolen_ore_display(self, screen):
-        stolen_ore_text = self.font.render(
-            f"Erz gestohlen: {self.stolen_ores}/{(MAX_ORE_LEVEL * 0.2)}", True, WHITE
-        )
-        screen.blit(
-            stolen_ore_text,
-            (
-                self.rect.centerx - stolen_ore_text.get_width() // 2,
-                self.rect.centery - 70,
-            ),
-        )
-
-
-class Transporter(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__()
-        self.image = lkw
-        self.rect = self.image.get_rect()
-        self.rect.center = (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
-        self.fuel = TANK_CAPACITY  # Treibstofftank
-        self.ores_collected = 0  # Gesammelte Erze
-        self.font = pygame.font.Font(None, 36)
-
-    # Update transporter position based on key input
-    def controls(self, keys):
-        if keys[pygame.K_w] or keys[pygame.K_UP]:
-            if self.rect.top > 0:
-                self.rect.y -= TRANSPORTER_SPEED
-        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            if self.rect.bottom < SCREEN_HEIGHT:
-                self.rect.y += TRANSPORTER_SPEED
-        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-            if self.rect.left > 0:
-                self.rect.x -= TRANSPORTER_SPEED
-        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-            if self.rect.right < SCREEN_WIDTH:
-                self.rect.x += TRANSPORTER_SPEED
-
-        # Refuel at gas station
-        if self.rect.colliderect(gas_station.rect):
-            self.fuel = TANK_CAPACITY
-
-        # Reduce fuel based on movement
-        if any(keys):
-            self.fuel -= FUEL_CONSUMPTION_RATE
-
-    # Collect ore from the ground
-    def collect_ore(self):
-        if self.ores_collected < MAX_ORES_TRANSPORTABLE:
-            if ore.ore_level > 0:
-                self.ores_collected += 1
-                ore.ore_level -= 1
-
-    # Draw ore display
-    def draw_ore_display(self, screen):
-        ore_text = self.font.render(
-            f"Erz: {self.ores_collected}/{MAX_ORES_TRANSPORTABLE}", True, WHITE
-        )
-        screen.blit(
-            ore_text,
-            (self.rect.centerx - ore_text.get_width() // 2, self.rect.centery - 70),
-        )
-
-    # Deliver ores to the warehouse
-    def deliver_ores(self, warehouse):
-        if self.ores_collected > 0:
-            warehouse.receive_ores(1)
-            self.ores_collected -= 1
-
-
-class Warehouse(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__()
-        self.image = wares
-        self.rect = self.image.get_rect()
-        self.rect.center = (SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100)
-        self.ores_stored = 0
-
-    # Receive ores
-    def receive_ores(self, amount):
-        self.ores_stored += amount
-
-    # Draw warehouse ore display
-    def draw_ore_display_warehouse(self, screen):
-        font = pygame.font.Font(None, 36)
-        ore_text = font.render(f"Erz: {self.ores_stored}", True, WHITE)
-        screen.blit(
-            ore_text,
-            (self.rect.centerx - ore_text.get_width() // 2, self.rect.centery - 70),
-        )
+        parameters.TRANSPORTER_SPEED = 4
+        parameters.TANK_CAPACITY = 120
+        parameters.FUEL_CONSUMPTION_RATE = 0.125
+        parameters.HELICOPTER_SPEED = parameters.TRANSPORTER_SPEED + 0.08
+        parameters.MAX_ORES_TRANSPORTABLE = 80
+        parameters.MAX_ORE_LEVEL = 600
 
 
 # Game initialization
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Transporter Spiel")
+screen = pygame.display.set_mode((parameters.SCREEN_WIDTH, parameters.SCREEN_HEIGHT))
+pygame.display.set_caption("Crazy Truck")
 clock = pygame.time.Clock()
 
 # Menu initialization
@@ -263,36 +94,44 @@ background_theme.widget_font = eight_bit_font
 background_theme.widget_menubar_style = pygame_menu.widgets.MENUBAR_STYLE_ADAPTIVE
 
 menu = pygame_menu.Menu(
-    "CRAZY TRUCK", SCREEN_WIDTH, SCREEN_HEIGHT, theme=background_theme
+    "CRAZY TRUCK",
+    parameters.SCREEN_WIDTH,
+    parameters.SCREEN_HEIGHT,
+    theme=background_theme,
 )
 
 # Create instances and group sprites
 all_sprites = pygame.sprite.Group()
-transporter = Transporter()
-landing_site = LandingSite()
-gas_station = GasStation()
-helicopter = Helicopter(transporter)
-warehouse = Warehouse()
-ore = Ore()
+landing_site = landingsite.LandingSite()
+gas_station = gasstation.GasStation()
+ore = ore.Ore()
+warehouse = warehouse.Warehouse()
+transporter = transporter.Transporter(gas_station, ore, warehouse)
+helicopter = helicopter.Helicopter(transporter)
 all_sprites.add(gas_station, warehouse, ore, landing_site, transporter, helicopter)
 
 
 # Draw fuel bar
 def draw_fuel_bar(fuel):
-    fuel_bar_length = fuel / TANK_CAPACITY * 100
-    fuel_bar_color = RED if fuel <= TANK_CAPACITY * 0.5 else GREEN
+    fuel_bar_length = fuel / parameters.TANK_CAPACITY * 100
+    fuel_bar_color = (
+        parameters.RED if fuel <= parameters.TANK_CAPACITY * 0.5 else parameters.GREEN
+    )
     font = pygame.font.Font(None, 36)
-    text = font.render(f"Tank", True, WHITE)
+    text = font.render(f"Tank", True, parameters.WHITE)
     screen.blit(text, (10, 50))
     pygame.draw.rect(screen, fuel_bar_color, (10, 10, fuel_bar_length, 20))
 
 
 # Reset game state
 def reset_game_state():
-    transporter.rect.center = (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
-    transporter.fuel = TANK_CAPACITY
+    transporter.rect.center = (
+        parameters.SCREEN_WIDTH / 2,
+        parameters.SCREEN_HEIGHT / 2,
+    )
+    transporter.fuel = parameters.TANK_CAPACITY
     transporter.ores_collected = 0
-    ore.ore_level = MAX_ORE_LEVEL
+    ore.ore_level = parameters.MAX_ORE_LEVEL
     helicopter.rect.center = (1510, 80)
     helicopter.stolen_ores = 0
     warehouse.ores_stored = 0
@@ -315,7 +154,9 @@ def show_manual() -> None:
 
 def game_over_screen():
     screen.blit(gameover, (0, 0))
-    screen.blit(gameover_text, (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2))
+    screen.blit(
+        gameover_text, (parameters.SCREEN_WIDTH / 2, parameters.SCREEN_HEIGHT / 2)
+    )
     screen.blit(continue_text, (600, 800))
     pygame.display.flip()
     waiting_for_key = True
@@ -327,7 +168,9 @@ def game_over_screen():
 
 def game_won_screen():
     screen.blit(gamewon, (0, 0))
-    screen.blit(gamewon_text, (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2))
+    screen.blit(
+        gamewon_text, (parameters.SCREEN_WIDTH / 2, parameters.SCREEN_HEIGHT / 2)
+    )
     screen.blit(continue_text, (600, 800))
     pygame.display.flip()
     waiting_for_key = True
@@ -370,10 +213,13 @@ def game_loop():
             transporter.collect_ore()
 
         if transporter.rect.colliderect(warehouse.rect):
-            transporter.deliver_ores(warehouse)
+            transporter.deliver_ores()
 
         if transporter.rect.colliderect(helicopter.rect):
             helicopter.steal_ores(transporter)
+
+        if transporter.rect.colliderect(gas_station.rect):
+            transporter.fuel = parameters.TANK_CAPACITY
 
         if not helicopter_disabled and transporter.rect.colliderect(helicopter.rect):
             transporter.ores_collected = 0
@@ -388,12 +234,15 @@ def game_loop():
                 helicopter_disabled = False
 
         # Lose condition
-        if transporter.fuel <= 0 or helicopter.stolen_ores > 0.2 * MAX_ORE_LEVEL:
+        if (
+            transporter.fuel <= 0
+            or helicopter.stolen_ores > 0.2 * parameters.MAX_ORE_LEVEL
+        ):
             game_over_screen()
             running = False
 
         # Win condition
-        if warehouse.ores_stored >= 0.8 * MAX_ORE_LEVEL:
+        if warehouse.ores_stored >= 0.8 * parameters.MAX_ORE_LEVEL:
             game_won_screen()
             running = False
 
