@@ -10,6 +10,7 @@ pygame-menu==4.4.3
 ```
 
 The easiest way to install the requirements is by executing the installStart.sh file.
+The shell-script works on Linux, may not work on Windows
 
 installStart.sh
 ```
