@@ -1,4 +1,4 @@
-# Crazy Truck
+# Crazy E-Truck
 
 ## How to install the game
 First you have to install all requirements.
@@ -35,6 +35,6 @@ python3 main.py
 ## How to play the game
 * Collect ores while the helicopter chases you.
 * The helicopter will steal all of your ores in an instant if he manages to catch you.
-* Refill your gas, drive to the gas station to do so.
+* Refill your battery, drive to the charge station to do so.
 * Not paying attention to your tank leads to a game over.
 * You have to deliver atleast 80% of the total amount of ores to win the game.

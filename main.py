@@ -9,7 +9,7 @@ import helicopter
 import warehouse
 import landingsite
 import transporter
-import gasstation
+import chargestation
 import ore
 import parameters
 
@@ -51,25 +51,25 @@ gamewon_text = pygame.transform.scale(
 
 # Function to set difficulty level
 def set_difficulty(_, value):
-    global TRANSPORTER_SPEED, TANK_CAPACITY, HELICOPTER_SPEED, FUEL_CONSUMPTION_RATE, MAX_ORE_LEVEL, MAX_ORES_TRANSPORTABLE
+    global TRANSPORTER_SPEED, BATTERY_CAPACITY, HELICOPTER_SPEED, battery_CONSUMPTION_RATE, MAX_ORE_LEVEL, MAX_ORES_TRANSPORTABLE
     if value == 1:  # Easy
         parameters.TRANSPORTER_SPEED = 4
-        parameters.TANK_CAPACITY = 150
-        parameters.FUEL_CONSUMPTION_RATE = 0.125
+        parameters.BATTERY_CAPACITY = 150
+        parameters.battery_CONSUMPTION_RATE = 0.125
         parameters.HELICOPTER_SPEED = parameters.TRANSPORTER_SPEED + 0.04
         parameters.MAX_ORES_TRANSPORTABLE = 100
         parameters.MAX_ORE_LEVEL = 800
     elif value == 2:  # Medium
         parameters.TRANSPORTER_SPEED = 4
-        parameters.TANK_CAPACITY = 135
-        parameters.FUEL_CONSUMPTION_RATE = 0.125
+        parameters.BATTERY_CAPACITY = 135
+        parameters.battery_CONSUMPTION_RATE = 0.125
         parameters.HELICOPTER_SPEED = parameters.TRANSPORTER_SPEED + 0.06
         parameters.MAX_ORES_TRANSPORTABLE = 90
         parameters.MAX_ORE_LEVEL = 700
     elif value == 3:  # Hard
         parameters.TRANSPORTER_SPEED = 4
-        parameters.TANK_CAPACITY = 120
-        parameters.FUEL_CONSUMPTION_RATE = 0.125
+        parameters.BATTERY_CAPACITY = 120
+        parameters.battery_CONSUMPTION_RATE = 0.125
         parameters.HELICOPTER_SPEED = parameters.TRANSPORTER_SPEED + 0.08
         parameters.MAX_ORES_TRANSPORTABLE = 80
         parameters.MAX_ORE_LEVEL = 600
@@ -103,24 +103,24 @@ menu = pygame_menu.Menu(
 # Create instances and group sprites
 all_sprites = pygame.sprite.Group()
 landing_site = landingsite.LandingSite()
-gas_station = gasstation.GasStation()
+charge_station = chargestation.ChargeStation()
 ore = ore.Ore()
 warehouse = warehouse.Warehouse()
-transporter = transporter.Transporter(gas_station, ore, warehouse)
+transporter = transporter.Transporter(charge_station, ore, warehouse)
 helicopter = helicopter.Helicopter(transporter)
-all_sprites.add(gas_station, warehouse, ore, landing_site, transporter, helicopter)
+all_sprites.add(charge_station, warehouse, ore, landing_site, transporter, helicopter)
 
 
-# Draw fuel bar
-def draw_fuel_bar(fuel):
-    fuel_bar_length = fuel / parameters.TANK_CAPACITY * 100
-    fuel_bar_color = (
-        parameters.RED if fuel <= parameters.TANK_CAPACITY * 0.5 else parameters.GREEN
+# Draw battery bar
+def draw_battery_bar(battery):
+    battery_bar_length = battery / parameters.BATTERY_CAPACITY * 100
+    battery_bar_color = (
+        parameters.RED if battery <= parameters.BATTERY_CAPACITY * 0.5 else parameters.GREEN
     )
     font = pygame.font.Font(None, 36)
-    text = font.render(f"Tank", True, parameters.WHITE)
+    text = font.render(f"Akku", True, parameters.WHITE)
     screen.blit(text, (10, 50))
-    pygame.draw.rect(screen, fuel_bar_color, (10, 10, fuel_bar_length, 20))
+    pygame.draw.rect(screen, battery_bar_color, (10, 10, battery_bar_length, 20))
 
 
 # Reset game state
@@ -129,7 +129,7 @@ def reset_game_state():
         parameters.SCREEN_WIDTH / 2,
         parameters.SCREEN_HEIGHT / 2,
     )
-    transporter.fuel = parameters.TANK_CAPACITY
+    transporter.battery = parameters.BATTERY_CAPACITY
     transporter.ores_collected = 0
     ore.ore_level = parameters.MAX_ORE_LEVEL
     helicopter.rect.center = (1510, 80)
@@ -202,7 +202,7 @@ def game_loop():
         # Draw needed displays
         all_sprites.draw(screen)
 
-        draw_fuel_bar(transporter.fuel)
+        draw_battery_bar(transporter.battery)
         transporter.draw_ore_display(screen)
         warehouse.draw_ore_display_warehouse(screen)
         ore.draw_max_ore_display(screen)
@@ -218,8 +218,8 @@ def game_loop():
         if transporter.rect.colliderect(helicopter.rect):
             helicopter.steal_ores(transporter)
 
-        if transporter.rect.colliderect(gas_station.rect):
-            transporter.fuel = parameters.TANK_CAPACITY
+        if transporter.rect.colliderect(charge_station.rect):
+            transporter.battery = parameters.BATTERY_CAPACITY
 
         if not helicopter_disabled and transporter.rect.colliderect(helicopter.rect):
             transporter.ores_collected = 0
@@ -235,7 +235,7 @@ def game_loop():
 
         # Lose condition
         if (
-            transporter.fuel <= 0
+            transporter.battery <= 0
             or helicopter.stolen_ores > 0.2 * parameters.MAX_ORE_LEVEL
         ):
             game_over_screen()

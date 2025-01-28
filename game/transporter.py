@@ -5,14 +5,14 @@ lkw = pygame.transform.scale(pygame.image.load("img/delivery-truck.png"), (150, 
 
 
 class Transporter(pygame.sprite.Sprite):
-    def __init__(self, gas_station, ore, warehouse):
+    def __init__(self, charge_station, ore, warehouse):
         super().__init__()
         self.image = lkw
         self.rect = self.image.get_rect()
         self.rect.center = (parameters.SCREEN_WIDTH / 2, parameters.SCREEN_HEIGHT / 2)
-        self.fuel = parameters.TANK_CAPACITY  # Treibstofftank
+        self.battery = parameters.BATTERY_CAPACITY  # Akku
         self.ores_collected = 0  # Gesammelte Erze
-        self.gas_station = gas_station
+        self.charge_station = charge_station
         self.ore = ore
         self.warehouse = warehouse
         self.font = pygame.font.Font(None, 36)
@@ -32,13 +32,13 @@ class Transporter(pygame.sprite.Sprite):
             if self.rect.right < parameters.SCREEN_WIDTH:
                 self.rect.x += parameters.TRANSPORTER_SPEED
 
-        # Refuel at gas station
-        if self.rect.colliderect(self.gas_station.rect):
-            self.fuel = parameters.TANK_CAPACITY
+        # Rebattery at charge station
+        if self.rect.colliderect(self.charge_station.rect):
+            self.battery = parameters.BATTERY_CAPACITY
 
-        # Reduce fuel based on movement
+        # Reduce battery based on movement
         if any(keys):
-            self.fuel -= parameters.FUEL_CONSUMPTION_RATE
+            self.battery -= parameters.battery_CONSUMPTION_RATE
 
     # Collect ore from the ground
     def collect_ore(self):
